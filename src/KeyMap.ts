@@ -1,4 +1,4 @@
-import { Frequency } from 'tone';
+import Tone from 'tone';
 
 const semitones = {
 	1: 'C',
@@ -47,7 +47,7 @@ function generateKeys(firstNote: string, lastNote: string) {
 			const isBlack = semitones[note].includes('#');
 			keys.push({
 				key,
-				midi: Frequency(semitones[note] + oct).toMidi(),
+				midi: Tone.Frequency(semitones[note] + oct).toMidi(),
 				x: isBlack ? keys[currentIndex - 1].x + blackKeysOffset : whiteKeyNum * whiteKeysWidth,
 				isBlack
 			});
