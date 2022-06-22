@@ -1,4 +1,4 @@
-import Tone from 'tone';
+import * as Tone from 'tone';
 
 const semitones = {
 	1: 'C',
