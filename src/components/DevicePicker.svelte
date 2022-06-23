@@ -1,17 +1,24 @@
 <script lang="ts">
-	import { Input, Output, WebMidi } from 'webmidi';
+	import { onMount } from 'svelte';
+
 	export let type: 'input' | 'output';
 	export let value: string = null;
-	type device = Input | Output;
-	let devices: device[] = type === 'input' ? WebMidi.inputs : WebMidi.outputs;
-	WebMidi.addListener('connected', () => {
+
+	let devices: any[];
+
+	onMount(async () => {
+		const { Input, Output, WebMidi } = await import('webmidi');
+
 		devices = type === 'input' ? WebMidi.inputs : WebMidi.outputs;
-	});
-	WebMidi.addListener('disconnected', () => {
-		devices = type === 'input' ? WebMidi.inputs : WebMidi.outputs;
-		if (!devices.find((d) => d.id === value)) {
-			value = null;
-		}
+		WebMidi.addListener('connected', () => {
+			devices = type === 'input' ? WebMidi.inputs : WebMidi.outputs;
+		});
+		WebMidi.addListener('disconnected', () => {
+			devices = type === 'input' ? WebMidi.inputs : WebMidi.outputs;
+			if (!devices.find((d) => d.id === value)) {
+				value = null;
+			}
+		});
 	});
 </script>
 

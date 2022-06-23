@@ -31,12 +31,10 @@
 	/**
 	 * Create a list of keys to play the sample library
 	 */
-	const keys = generateKeys(startNote, endNote);
+	let keys;
 
-	/*
-	MIDI things
-	*/
 	onMount(() => {
+		keys = generateKeys(startNote, endNote);
 		enableMidi();
 	});
 
@@ -199,47 +197,49 @@
 			isDragging = false;
 		}}
 	>
-		<div class="white-keys">
-			{#each keys.filter((k) => !k.isBlack) as whiteKey}
-				<div
-					class="white-key {whiteKey.key} {notesPlaying.includes(whiteKey.key)
-						? 'playing'
-						: ''} {soloNotesPlaying.includes(whiteKey.key) ? 'solo-playing' : ''}"
-					on:mousedown={() => {
-						noteDown(whiteKey.key);
-						isDragging = true;
-					}}
-					on:mouseup={() => {
-						noteUp(whiteKey.key);
-						onStopDrag();
-					}}
-					on:mouseenter={() => {
-						if (isDragging) noteDown(whiteKey.key);
-					}}
-				/>
-			{/each}
-		</div>
-		<div class="black-keys">
-			{#each keys.filter((k) => k.isBlack) as blackKey}
-				<div
-					class="black-key {blackKey.key.replace('#', 's')} {notesPlaying.includes(blackKey.key)
-						? 'playing'
-						: ''} {soloNotesPlaying.includes(blackKey.key) ? 'solo-playing' : ''}"
-					style="left: {blackKey.x}px;"
-					on:mousedown={() => {
-						noteDown(blackKey.key);
-						isDragging = true;
-					}}
-					on:mouseup={() => {
-						noteUp(blackKey.key);
-						onStopDrag();
-					}}
-					on:mouseenter={() => {
-						if (isDragging) noteDown(blackKey.key);
-					}}
-				/>
-			{/each}
-		</div>
+		{#if keys}
+			<div class="white-keys">
+				{#each keys.filter((k) => !k.isBlack) as whiteKey}
+					<div
+						class="white-key {whiteKey.key} {notesPlaying.includes(whiteKey.key)
+							? 'playing'
+							: ''} {soloNotesPlaying.includes(whiteKey.key) ? 'solo-playing' : ''}"
+						on:mousedown={() => {
+							noteDown(whiteKey.key);
+							isDragging = true;
+						}}
+						on:mouseup={() => {
+							noteUp(whiteKey.key);
+							onStopDrag();
+						}}
+						on:mouseenter={() => {
+							if (isDragging) noteDown(whiteKey.key);
+						}}
+					/>
+				{/each}
+			</div>
+			<div class="black-keys">
+				{#each keys.filter((k) => k.isBlack) as blackKey}
+					<div
+						class="black-key {blackKey.key.replace('#', 's')} {notesPlaying.includes(blackKey.key)
+							? 'playing'
+							: ''} {soloNotesPlaying.includes(blackKey.key) ? 'solo-playing' : ''}"
+						style="left: {blackKey.x}px;"
+						on:mousedown={() => {
+							noteDown(blackKey.key);
+							isDragging = true;
+						}}
+						on:mouseup={() => {
+							noteUp(blackKey.key);
+							onStopDrag();
+						}}
+						on:mouseenter={() => {
+							if (isDragging) noteDown(blackKey.key);
+						}}
+					/>
+				{/each}
+			</div>
+		{/if}
 	</div>
 </div>
 
