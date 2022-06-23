@@ -4,7 +4,7 @@
 	export let type: 'input' | 'output';
 	export let value: string = null;
 
-	let devices: any[];
+	let devices = [];
 
 	onMount(async () => {
 		const { Input, Output, WebMidi } = await import('webmidi');
