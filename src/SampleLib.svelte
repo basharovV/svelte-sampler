@@ -1,6 +1,6 @@
 <script lang="ts">
-	import toneMidi from '@tonejs/midi';
-	const { Midi } = toneMidi;
+	import * as pkg from '@tonejs/midi';
+	const { Midi } = pkg;
 	import { onMount } from 'svelte';
 	import * as Tone from 'tone';
 	import { Input, WebMidi } from 'webmidi';
