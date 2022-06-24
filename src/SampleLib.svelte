@@ -125,7 +125,8 @@
 	function noteDown(note) {
 		if (!sampler) init();
 		else if (samplesLoaded) {
-			sampler.triggerAttack(note);
+			const now = Tone.getContext().transport.now();
+			sampler.triggerAttack(note, now);
 		}
 	}
 
@@ -158,6 +159,7 @@
 				urls,
 				baseUrl: samplesPath,
 				onload: () => {
+					sampler.sync();
 					isLoadingSamples = false;
 					samplesLoaded = true;
 					console.log('loaded');
