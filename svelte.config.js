@@ -8,7 +8,20 @@ const config = {
 	preprocess: preprocess(),
 
 	kit: {
-		adapter: adapter()
+		prerender: {
+			default: false
+		},
+		adapter: adapter(),
+		paths: {
+			base: ""
+		},
+		package: {
+			dir: 'package',
+			emitTypes: true,
+			// excludes all .d.ts and files starting with _ as the name
+			exports: (filepath) => !/^_|\/_|\.d\.ts$/.test(filepath),
+			files: () => true
+		},
 	}
 };
 

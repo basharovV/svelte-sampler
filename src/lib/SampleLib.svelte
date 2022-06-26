@@ -1,8 +1,13 @@
+<script context="module">
+	export const prerender = true;
+</script>
+
 <script lang="ts">
 	import * as pkg from '@tonejs/midi';
 	const { Midi } = pkg;
 	import { onMount } from 'svelte';
 	import * as Tone from 'tone';
+	import { Oscillator } from 'tone';
 	import { Input, WebMidi } from 'webmidi';
 	import { generateKeys } from './KeyMap';
 
@@ -125,8 +130,7 @@
 	function noteDown(note) {
 		if (!sampler) init();
 		else if (samplesLoaded) {
-			const now = Tone.getContext().transport.now();
-			sampler.triggerAttack(note, now);
+			sampler.triggerAttack(note, Tone.now());
 		}
 	}
 
@@ -159,10 +163,8 @@
 				urls,
 				baseUrl: samplesPath,
 				onload: () => {
-					sampler.sync();
 					isLoadingSamples = false;
 					samplesLoaded = true;
-					console.log('loaded');
 					resolve();
 				}
 			}).toDestination();
@@ -173,7 +175,7 @@
 		await Tone.start();
 		Tone.getContext().dispose();
 		// Tone.setContext(new Tone.OfflineContext(1, 0.5, 44100));
-		Tone.setContext(new Tone.Context({ latencyHint: 'interactive', lookAhead: Tone.immediate() }));
+		Tone.setContext(new Tone.Context({ latencyHint: 'interactive', lookAhead: 0 }));
 		// Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 5}));
 		Tone.getContext().transport.bpm.value = bpm;
 		Tone.getDestination().volume.value = vol;
