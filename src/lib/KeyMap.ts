@@ -16,7 +16,7 @@ const semitones = {
 };
 
 const whiteKeysWidth = 24;
-const blackKeysWidth = 18;
+const blackKeysWidth = 16;
 const blackKeysOffset = whiteKeysWidth / 2 + (whiteKeysWidth - blackKeysWidth) / 2;
 
 function generateKeys(firstNote: string, lastNote: string) {

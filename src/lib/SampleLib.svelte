@@ -7,7 +7,6 @@
 	const { Midi } = pkg;
 	import { onMount } from 'svelte';
 	import * as Tone from 'tone';
-	import { Oscillator } from 'tone';
 	import { Input, WebMidi } from 'webmidi';
 	import { generateKeys } from './KeyMap';
 
@@ -18,11 +17,17 @@
 	let isLoadingSamples = false;
 	let samplesLoaded = false;
 	let sampler: Tone.Sampler;
+	let reverb: Tone.Reverb;
 
 	export let samplesPath;
 	export let startNote = 'E1';
 	export let endNote = 'E7';
 	export let urls: SamplesMap;
+
+	// Reverb
+	export let reverbOn = false;
+	let reverbWetSignal = 0;
+	const REVERB_ON_WET_AMOUNT = 0.4;
 
 	// Validate params
 	if (!urls) {
@@ -90,23 +95,55 @@
 
 		const midi = await Midi.fromUrl(midiFile);
 
-		const now = sampler.now();
-		midi.tracks[0].notes.forEach((note) => {
-			sampler.triggerAttackRelease(note.name, note.duration, note.time + now, note.velocity);
+		let now = Tone.getContext().transport.now();
+		const drawNow = Tone.Draw.now();
+		const compensation = 0.07;
 
-			Tone.Draw.schedule(function () {
-				notesPlaying.push(note.name);
-				notesPlaying = notesPlaying;
-			}, note.time + now);
+		Tone.getContext().transport.on('start', (time) => {
+			now = time;
+			console.log('now', now);
 
-			Tone.Draw.schedule(function () {
-				notesPlaying.splice(
-					notesPlaying.findIndex((n) => note.name === n),
-					1
-				);
-				notesPlaying = notesPlaying;
-			}, note.time + now + note.duration);
+			midi.tracks[0].notes.forEach((note, idx) => {
+				if (idx === 0) console.log('FIRST NOTE', note);
+				Tone.getContext().transport.scheduleOnce((time) => {
+					if (idx === 1) console.log('FIRST NOTE SCHEDULE', time);
+					sampler.triggerAttackRelease(note.name, note.duration, Tone.now(), note.velocity);
+
+					Tone.Draw.schedule(function () {
+						notesPlaying.push(note.name);
+						notesPlaying = notesPlaying;
+					}, Tone.Draw.now() - compensation);
+
+					Tone.Draw.schedule(function () {
+						notesPlaying.splice(
+							notesPlaying.findIndex((n) => note.name === n),
+							1
+						);
+						notesPlaying = notesPlaying;
+
+						if (idx === midi.tracks[0].notes.length - 1) {
+							stop();
+						}
+					}, Tone.Draw.now() + note.duration - compensation);
+				}, now + note.time);
+			});
 		});
+
+		Tone.getContext().transport.start(now, now);
+	};
+
+	export const stop = () => {
+		Tone.getContext().transport.cancel(Tone.now());
+		Tone.getContext().transport.stop(Tone.now());
+		Tone.getContext().transport.off('start');
+		notesPlaying = [];
+		Tone.Draw.cancel(Tone.now());
+	};
+
+	export const toggleReverb = () => {
+		reverbOn = !reverbOn;
+		reverbWetSignal = reverbOn ? REVERB_ON_WET_AMOUNT : 0;
+		if (reverb) reverb.set({wet: reverbWetSignal});
 	};
 
 	// SETTINGS
@@ -143,7 +180,12 @@
 
 	async function init() {
 		await initTone();
+		await initFx();
 		await initSampleLibrary();
+	}
+
+	async function initFx() {
+		reverb = new Tone.Reverb({ wet: reverbWetSignal, decay: 2, preDelay: 0.2 }).toDestination();
 	}
 
 	async function initSampleLibrary() {
@@ -160,6 +202,7 @@
 					console.error(err);
 					reject(err);
 				},
+				volume: 10,
 				urls,
 				baseUrl: samplesPath,
 				onload: () => {
@@ -167,13 +210,13 @@
 					samplesLoaded = true;
 					resolve();
 				}
-			}).toDestination();
+			}).connect(reverb);
 		});
 	}
 
 	async function initTone() {
 		await Tone.start();
-		Tone.getContext().dispose();
+		if (!Tone.getContext().disposed) Tone.getContext().dispose();
 		// Tone.setContext(new Tone.OfflineContext(1, 0.5, 44100));
 		Tone.setContext(new Tone.Context({ latencyHint: 'interactive', lookAhead: 0 }));
 		// Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 5}));
@@ -203,7 +246,7 @@
 	>
 		{#if keys}
 			<div class="white-keys">
-				{#each keys.filter((k) => !k.isBlack) as whiteKey}
+				{#each keys.filter((k) => !k.isBlack) as whiteKey, index}
 					<div
 						class="white-key {whiteKey.key} {notesPlaying.includes(whiteKey.key)
 							? 'playing'
@@ -266,6 +309,7 @@
 		margin: auto;
 		position: relative;
 		max-width: 1040px;
+		overflow: visible;
 	}
 
 	.settings {
@@ -285,6 +329,8 @@
 		position: relative;
 		width: fit-content;
 		pointer-events: auto;
+		box-sizing: border-box;
+		box-shadow: 40px 30px 100px 0px black;
 
 		&.loading {
 			opacity: 0.5;
@@ -310,9 +356,9 @@
 			margin: 0 2px;
 			box-sizing: border-box;
 			height: 100%;
-			border: 1px solid rgb(89, 84, 84);
+			border: 1px inset rgb(156, 156, 156);
 			border-radius: 4px;
-			background: #252525;
+			background: #6663636d;
 			box-sizing: border-box;
 			pointer-events: auto;
 			box-shadow: none;
@@ -324,6 +370,7 @@
 			&.playing {
 				background-color: rgb(188, 0, 38);
 				box-shadow: 1px 1px 15px 15px rgba(188, 0, 38, 0.248);
+				transform: translateY(1px);
 			}
 
 			&.dragging {
@@ -335,24 +382,26 @@
 			}
 			&:active {
 				background-color: red;
+				transform: translateY(1px);
 			}
 		}
 
 		.black-key {
 			z-index: 1;
 			position: absolute;
-			width: 18px;
+			width: 16px;
 			height: 100%;
-			border: 1px solid #313131;
-			background: black;
+			border: 1px inset rgb(92, 88, 88);
+			background: rgb(20, 20, 20);
 			border-bottom-left-radius: 3px;
 			border-bottom-right-radius: 3px;
 			border-top-right-radius: 3px;
 			border-top-left-radius: 3px;
-			box-shadow: none;
+			box-shadow: 0px 0px 1px rgba(0, 0, 0, 0.474);
 			&.playing {
 				background-color: rgb(188, 0, 38);
 				box-shadow: 1px 1px 15px 15px rgba(188, 0, 38, 0.248);
+				transform: translateY(1px);
 			}
 
 			&.solo-playing {
@@ -369,6 +418,7 @@
 
 			&:active {
 				background-color: red;
+				transform: translateY(1px);
 			}
 		}
 	}
