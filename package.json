@@ -1,5 +1,5 @@
 {
-	"name": "svelte-piano",
+	"name": "svelte-sampler",
 	"version": "0.0.2",
 	"engines": {
 		"node": "16.x"
