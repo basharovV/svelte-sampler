@@ -238,8 +238,8 @@
 		<p>Loading samples...</p>
 	{/if}
 
-	<div
-		class="piano {isLoadingSamples ? 'loading' : ''}"
+	<piano
+		class:loading={isLoadingSamples}
 		on:mouseleave={() => {
 			isDragging = false;
 		}}
@@ -287,7 +287,7 @@
 				{/each}
 			</div>
 		{/if}
-	</div>
+	</piano>
 </div>
 
 <style lang="scss">
@@ -320,7 +320,7 @@
 		display: none;
 	}
 
-	.piano {
+	piano {
 		display: flex;
 		flex-direction: row;
 		flex-wrap: nowrap;
