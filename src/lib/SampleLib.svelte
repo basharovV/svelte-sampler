@@ -18,11 +18,13 @@
 	let samplesLoaded = false;
 	let sampler: Tone.Sampler;
 	let reverb: Tone.Reverb;
+	let isSustaining = false;
 
 	export let samplesPath;
 	export let startNote = 'E1';
 	export let endNote = 'E7';
 	export let urls: SamplesMap;
+	export let theme: 'light' | 'grey' | 'dark' = 'grey';
 
 	// Reverb
 	export let reverbOn = false;
@@ -64,7 +66,6 @@
 			if (input) {
 				input.addListener('noteon', (e) => {
 					let note = Tone.Frequency(e.note.number, 'midi').toNote();
-					console.log('note', note);
 					noteDown(note);
 					notesPlaying.push(note);
 					notesPlaying = notesPlaying;
@@ -78,8 +79,24 @@
 					);
 					notesPlaying = notesPlaying;
 				});
-				input.addListener('controlchange-controller64', (e) => {
-					console.log('PEDAL', e);
+				input.addListener('controlchange', (e) => {
+					if (e.subtype === 'holdpedal') {
+						if (e.value === 1) {
+							isSustaining = true;
+							// Add any existing notes to array
+							notesSustainedToLetGo.push(
+								...notesPlaying.filter((n) => !notesSustainedToLetGo.includes(n))
+							);
+							notesSustainedToLetGo = notesSustainedToLetGo;
+						} else if (e.value === 0) {
+							isSustaining = false;
+							const notesToLetGo = notesSustainedToLetGo.filter((n) => !notesPlaying.includes(n));
+							sampler.triggerRelease(notesToLetGo);
+							notesSustainedToLetGo = notesSustainedToLetGo.filter((n) => notesPlaying.includes(n));
+							notesSustainedToLetGo = notesSustainedToLetGo;
+							notesSustainedDisplay = notesSustainedToLetGo;
+						}
+					}
 				});
 			}
 		}
@@ -101,13 +118,22 @@
 
 		Tone.getContext().transport.on('start', (time) => {
 			now = time;
-			console.log('now', now);
 
 			midi.tracks[0].notes.forEach((note, idx) => {
-				if (idx === 0) console.log('FIRST NOTE', note);
 				Tone.getContext().transport.scheduleOnce((time) => {
-					if (idx === 1) console.log('FIRST NOTE SCHEDULE', time);
-					sampler.triggerAttackRelease(note.name, note.duration, Tone.now(), note.velocity);
+
+					// Note down
+					sampler.triggerAttack(note.name, Tone.now(), note.velocity);
+
+					// Note up (+ sustain handling)
+					Tone.getContext().transport.scheduleOnce((time) => {
+						if (isSustaining) {
+							notesSustainedToLetGo.push(note);
+							notesSustainedToLetGo = notesSustainedToLetGo;
+						} else {
+							sampler.triggerRelease(note.name, Tone.now());
+						}
+					}, Tone.now() + note.duration);
 
 					Tone.Draw.schedule(function () {
 						notesPlaying.push(note.name);
@@ -127,6 +153,28 @@
 					}, Tone.Draw.now() + note.duration - compensation);
 				}, now + note.time);
 			});
+			// midi.tracks[0].controlChanges[64].forEach((sustain) => {
+			// 	Tone.getContext().transport.scheduleOnce((time) => {
+			// 		console.log('pedal!', sustain);
+			// 		if (sustain.value === 1) {
+			// 			isSustaining = true;
+			// 			// Add any existing notes to array
+			// 			notesSustainedToLetGo.push(
+			// 				...notesPlaying.filter((n) => !notesSustainedToLetGo.includes(n))
+			// 			);
+			// 			notesSustainedToLetGo = notesSustainedToLetGo;
+			// 		} else if (sustain.value === 0) {
+			// 			isSustaining = false;
+			// 			console.log('notes sustained', notesSustainedToLetGo);
+			// 			console.log('notes playinh', notesPlaying);
+			// 			sampler.triggerRelease(notesSustainedToLetGo);
+			// 			notesSustainedToLetGo = notesSustainedToLetGo.filter((n) => notesPlaying.includes(n));
+			// 			notesSustainedToLetGo = notesSustainedToLetGo;
+
+			// 			console.log('notes sustained after', notesSustainedToLetGo);
+			// 		}
+			// 	}, now + sustain.time);
+			// });
 		});
 
 		Tone.getContext().transport.start(now, now);
@@ -143,7 +191,7 @@
 	export const toggleReverb = () => {
 		reverbOn = !reverbOn;
 		reverbWetSignal = reverbOn ? REVERB_ON_WET_AMOUNT : 0;
-		if (reverb) reverb.set({wet: reverbWetSignal});
+		if (reverb) reverb.set({ wet: reverbWetSignal });
 	};
 
 	// SETTINGS
@@ -153,6 +201,8 @@
 	let timeSig = '4/4';
 
 	$: notesPlaying = [];
+	$: notesSustainedToLetGo = [];
+	$: notesSustainedDisplay = [];
 	$: soloNotesPlaying = [];
 
 	async function playNote(note, duration, time) {
@@ -174,7 +224,14 @@
 	function noteUp(note) {
 		if (!sampler) init();
 		else if (samplesLoaded) {
-			sampler.triggerRelease(note);
+			if (isSustaining) {
+				notesSustainedToLetGo.push(note);
+				notesSustainedToLetGo = notesSustainedToLetGo;
+				notesSustainedDisplay = notesSustainedToLetGo;
+			} else {
+				notesSustainedToLetGo = notesSustainedToLetGo.filter((n) => n !== note);
+				sampler.triggerRelease(note);
+			}
 		}
 	}
 
@@ -240,6 +297,9 @@
 
 	<piano
 		class:loading={isLoadingSamples}
+		class:theme-light={theme === 'light'}
+		class:theme-dark={theme === 'dark'}
+		class:theme-grey={theme === 'grey'}
 		on:mouseleave={() => {
 			isDragging = false;
 		}}
@@ -248,9 +308,9 @@
 			<div class="white-keys">
 				{#each keys.filter((k) => !k.isBlack) as whiteKey, index}
 					<div
-						class="white-key {whiteKey.key} {notesPlaying.includes(whiteKey.key)
-							? 'playing'
-							: ''} {soloNotesPlaying.includes(whiteKey.key) ? 'solo-playing' : ''}"
+						class="white-key {whiteKey.key}"
+						class:playing={notesPlaying.includes(whiteKey.key)}
+						class:sustained={notesSustainedDisplay.includes(whiteKey.key)}
 						on:mousedown={() => {
 							noteDown(whiteKey.key);
 							isDragging = true;
@@ -268,9 +328,9 @@
 			<div class="black-keys">
 				{#each keys.filter((k) => k.isBlack) as blackKey}
 					<div
-						class="black-key {blackKey.key.replace('#', 's')} {notesPlaying.includes(blackKey.key)
-							? 'playing'
-							: ''} {soloNotesPlaying.includes(blackKey.key) ? 'solo-playing' : ''}"
+						class="black-key {blackKey.key.replace('#', 's')}"
+						class:playing={notesPlaying.includes(blackKey.key)}
+						class:sustained={notesSustainedDisplay.includes(blackKey.key)}
 						style="left: {blackKey.x}px;"
 						on:mousedown={() => {
 							noteDown(blackKey.key);
@@ -358,7 +418,7 @@
 			height: 100%;
 			border: 1px inset rgb(156, 156, 156);
 			border-radius: 4px;
-			background: #6663636d;
+			background-color: #6663636d;
 			box-sizing: border-box;
 			pointer-events: auto;
 			box-shadow: none;
@@ -370,7 +430,11 @@
 			&.playing {
 				background-color: rgb(188, 0, 38);
 				box-shadow: 1px 1px 15px 15px rgba(188, 0, 38, 0.248);
-				transform: translateY(1px);
+				transform: translateY(2px);
+			}
+
+			&.sustained {
+				background-color: rgb(144, 84, 77);
 			}
 
 			&.dragging {
@@ -382,7 +446,27 @@
 			}
 			&:active {
 				background-color: red;
-				transform: translateY(1px);
+				transform: translateY(2px);
+			}
+		}
+
+		&.theme-light .white-key {
+			background-color: white;
+
+			&.solo-playing {
+				background-color: rgb(0, 255, 60);
+			}
+
+			&.playing {
+				background-color: rgb(188, 0, 38);
+			}
+
+			&:hover {
+				background-color: #53aa8b;
+			}
+			&:active {
+				background-color: red;
+				transform: translateY(2px);
 			}
 		}
 
@@ -401,7 +485,11 @@
 			&.playing {
 				background-color: rgb(188, 0, 38);
 				box-shadow: 1px 1px 15px 15px rgba(188, 0, 38, 0.248);
-				transform: translateY(1px);
+				transform: translateY(2px);
+			}
+
+			&.sustained {
+				background-color: rgb(144, 84, 77);
 			}
 
 			&.solo-playing {
