@@ -292,7 +292,7 @@
 
 <div class="container" on:mouseup={onStopDrag}>
 	{#if isLoadingSamples}
-		<p>Loading samples...</p>
+		<p style="position: absolute;margin: auto;top: -3em;">Loading samples...</p>
 	{/if}
 
 	<piano
@@ -381,6 +381,7 @@
 	}
 
 	piano {
+		min-height: 100px;
 		display: flex;
 		flex-direction: row;
 		flex-wrap: nowrap;
@@ -391,10 +392,20 @@
 		pointer-events: auto;
 		box-sizing: border-box;
 		box-shadow: 40px 30px 100px 0px black;
-
+		opacity: 0;
+		animation: fadeIn 0.5s 0.3s ease-in forwards;
 		&.loading {
 			opacity: 0.5;
 			pointer-events: none;
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+			}
+			to {
+				opacity: 1;
+			}
 		}
 
 		.black-keys {
