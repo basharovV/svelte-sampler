@@ -2,7 +2,7 @@
 	"name": "svelte-sampler",
 	"version": "0.0.9",
 	"engines": {
-		"node": "18.x"
+		"node": ">=16.x"
 	},
 	"scripts": {
 		"dev": "svelte-kit dev --port 3001",
