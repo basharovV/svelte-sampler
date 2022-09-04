@@ -3,8 +3,8 @@
 </script>
 
 <script lang="ts">
-	import * as pkg from '@tonejs/midi';
-	const { Midi } = pkg;
+	import { Midi } from '@tonejs/midi';
+	
 	import { onMount } from 'svelte';
 	import * as Tone from 'tone';
 	import { Input, WebMidi } from 'webmidi';
